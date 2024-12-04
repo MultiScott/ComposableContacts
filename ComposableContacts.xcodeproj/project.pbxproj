@@ -6,6 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		6BB343682CFFC3D7001189CF /* Tagged in Frameworks */ = {isa = PBXBuildFile; productRef = 6BB343672CFFC3D7001189CF /* Tagged */; };
+		6BB3436B2CFFC3EB001189CF /* Dependencies in Frameworks */ = {isa = PBXBuildFile; productRef = 6BB3436A2CFFC3EB001189CF /* Dependencies */; };
+		6BB3436D2CFFC3EB001189CF /* DependenciesMacros in Frameworks */ = {isa = PBXBuildFile; productRef = 6BB3436C2CFFC3EB001189CF /* DependenciesMacros */; };
+		6BB3436F2CFFC3EB001189CF /* DependenciesTestSupport in Frameworks */ = {isa = PBXBuildFile; productRef = 6BB3436E2CFFC3EB001189CF /* DependenciesTestSupport */; };
+		6BB343802CFFC507001189CF /* IdentifiedCollections in Frameworks */ = {isa = PBXBuildFile; productRef = 6BB3437F2CFFC507001189CF /* IdentifiedCollections */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		6BB3435A2CFFC3A0001189CF /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -23,7 +31,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		6BB3435E2CFFC3A0001189CF /* ComposableContacts */ = {
+		6BB3437A2CFFC4B4001189CF /* ComposableContacts */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ComposableContacts;
 			sourceTree = "<group>";
@@ -35,6 +43,11 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6BB343802CFFC507001189CF /* IdentifiedCollections in Frameworks */,
+				6BB343682CFFC3D7001189CF /* Tagged in Frameworks */,
+				6BB3436B2CFFC3EB001189CF /* Dependencies in Frameworks */,
+				6BB3436D2CFFC3EB001189CF /* DependenciesMacros in Frameworks */,
+				6BB3436F2CFFC3EB001189CF /* DependenciesTestSupport in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -44,7 +57,7 @@
 		6BB343532CFFC3A0001189CF = {
 			isa = PBXGroup;
 			children = (
-				6BB3435E2CFFC3A0001189CF /* ComposableContacts */,
+				6BB3437A2CFFC4B4001189CF /* ComposableContacts */,
 				6BB3435D2CFFC3A0001189CF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -73,10 +86,15 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				6BB3435E2CFFC3A0001189CF /* ComposableContacts */,
+				6BB3437A2CFFC4B4001189CF /* ComposableContacts */,
 			);
 			name = ComposableContacts;
 			packageProductDependencies = (
+				6BB343672CFFC3D7001189CF /* Tagged */,
+				6BB3436A2CFFC3EB001189CF /* Dependencies */,
+				6BB3436C2CFFC3EB001189CF /* DependenciesMacros */,
+				6BB3436E2CFFC3EB001189CF /* DependenciesTestSupport */,
+				6BB3437F2CFFC507001189CF /* IdentifiedCollections */,
 			);
 			productName = ComposableContacts;
 			productReference = 6BB3435C2CFFC3A0001189CF /* libComposableContacts.a */;
@@ -106,6 +124,11 @@
 			);
 			mainGroup = 6BB343532CFFC3A0001189CF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6BB343662CFFC3D7001189CF /* XCRemoteSwiftPackageReference "swift-tagged" */,
+				6BB343692CFFC3EB001189CF /* XCRemoteSwiftPackageReference "swift-dependencies" */,
+				6BB3437E2CFFC507001189CF /* XCRemoteSwiftPackageReference "swift-identified-collections" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 6BB3435D2CFFC3A0001189CF /* Products */;
 			projectDirPath = "";
@@ -251,6 +274,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = DDQ4V5Z9MH;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -264,6 +288,7 @@
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = DDQ4V5Z9MH;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -294,6 +319,61 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6BB343662CFFC3D7001189CF /* XCRemoteSwiftPackageReference "swift-tagged" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-tagged";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.10.0;
+			};
+		};
+		6BB343692CFFC3EB001189CF /* XCRemoteSwiftPackageReference "swift-dependencies" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-dependencies";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.6.2;
+			};
+		};
+		6BB3437E2CFFC507001189CF /* XCRemoteSwiftPackageReference "swift-identified-collections" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/pointfreeco/swift-identified-collections";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6BB343672CFFC3D7001189CF /* Tagged */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6BB343662CFFC3D7001189CF /* XCRemoteSwiftPackageReference "swift-tagged" */;
+			productName = Tagged;
+		};
+		6BB3436A2CFFC3EB001189CF /* Dependencies */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6BB343692CFFC3EB001189CF /* XCRemoteSwiftPackageReference "swift-dependencies" */;
+			productName = Dependencies;
+		};
+		6BB3436C2CFFC3EB001189CF /* DependenciesMacros */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6BB343692CFFC3EB001189CF /* XCRemoteSwiftPackageReference "swift-dependencies" */;
+			productName = DependenciesMacros;
+		};
+		6BB3436E2CFFC3EB001189CF /* DependenciesTestSupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6BB343692CFFC3EB001189CF /* XCRemoteSwiftPackageReference "swift-dependencies" */;
+			productName = DependenciesTestSupport;
+		};
+		6BB3437F2CFFC507001189CF /* IdentifiedCollections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6BB3437E2CFFC507001189CF /* XCRemoteSwiftPackageReference "swift-identified-collections" */;
+			productName = IdentifiedCollections;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 6BB343542CFFC3A0001189CF /* Project object */;
 }
