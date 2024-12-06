@@ -7,7 +7,8 @@ let package = Package(
     name: "ComposableContacts",
     platforms: [
         .iOS(.v13),
-        .macOS(.v13)
+        .macOS(.v13),
+        .watchOS(.v10),
     ],
     products: [
         .library(

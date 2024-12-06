@@ -16,19 +16,170 @@ import DependenciesMacros
 public struct ContactsClient: Sendable {
     public var requestAccess: @Sendable () async throws -> CNAuthorizationStatus = { .authorized }
     public var getDataForContacts: @Sendable ([ComposableContactKey]) async throws -> [CNContact] = { _ in [] }
-    public var getDataForContact: @Sendable ([ComposableContactKey]) async throws -> ComposableContact = { _ in  .johnDoe}
+    public var getDataForContact: @Sendable ([ComposableContactKey]) async throws -> CNContact = { _ in  .johnDoe}
     public var getKeyForContact: @Sendable () async throws -> String = {""}
 }
 
 // MARK: DataTypes
 public enum ContactError: Error {
-    case requestAccessCompleteFail
-    case requestAccessFailed(String)
-    case getContactsCompleteFail
-    case getContactsFailed(String)
+    case failedToCreateMutableCopy
+    case operationNotAllowed
     case unauthorized
 }
 
+public enum CNContactChangeAction: Sendable {
+    case update
+    case delete
+}
+
+public struct CNContactChanges: Sendable, Equatable, Hashable {
+    public var contact: CNContact
+    public var action: CNContactChangeAction
+}
+
+//MARK: Functional Extensions
+extension CNContact {
+    func getFetchedKeys() -> Set<ComposableContactKey> {
+        var availableKeys = Set<ComposableContactKey>()
+        for key in ComposableContactKey.allCases {
+            let cnKey = key.keyDescriptor as! String
+            if self.isKeyAvailable(cnKey) {
+                availableKeys.insert(key)
+            }
+        }
+        return availableKeys
+    }
+    
+    func getSetKeys() -> Set<ComposableContactKey> {
+        var availableKeys = Set<ComposableContactKey>()
+        for key in ComposableContactKey.allCases {
+            switch key {
+            case .identifier:
+                if !self.identifier.isEmpty {
+                    availableKeys.insert(.identifier)
+                }
+            case .contactType:
+                // CNContactType is always available
+                availableKeys.insert(.contactType)
+            case .namePrefix:
+                if !self.namePrefix.isEmpty {
+                    availableKeys.insert(.namePrefix)
+                }
+            case .givenName:
+                if !self.givenName.isEmpty {
+                    availableKeys.insert(.givenName)
+                }
+            case .middleName:
+                if !self.middleName.isEmpty {
+                    availableKeys.insert(.middleName)
+                }
+            case .familyName:
+                if !self.familyName.isEmpty {
+                    availableKeys.insert(.familyName)
+                }
+            case .previousFamilyName:
+                if !self.previousFamilyName.isEmpty {
+                    availableKeys.insert(.previousFamilyName)
+                }
+            case .nameSuffix:
+                if !self.nameSuffix.isEmpty {
+                    availableKeys.insert(.nameSuffix)
+                }
+            case .nickname:
+                if !self.nickname.isEmpty {
+                    availableKeys.insert(.nickname)
+                }
+            case .organizationName:
+                if !self.organizationName.isEmpty {
+                    availableKeys.insert(.organizationName)
+                }
+            case .departmentName:
+                if !self.departmentName.isEmpty {
+                    availableKeys.insert(.departmentName)
+                }
+            case .jobTitle:
+                if !self.jobTitle.isEmpty {
+                    availableKeys.insert(.jobTitle)
+                }
+            case .phoneticGivenName:
+                if !self.phoneticGivenName.isEmpty {
+                    availableKeys.insert(.phoneticGivenName)
+                }
+            case .phoneticMiddleName:
+                if !self.phoneticMiddleName.isEmpty {
+                    availableKeys.insert(.phoneticMiddleName)
+                }
+            case .phoneticFamilyName:
+                if !self.phoneticFamilyName.isEmpty {
+                    availableKeys.insert(.phoneticFamilyName)
+                }
+            case .phoneticOrganizationName:
+                if !self.phoneticOrganizationName.isEmpty {
+                    availableKeys.insert(.phoneticOrganizationName)
+                }
+            case .birthday:
+                if self.birthday != nil {
+                    availableKeys.insert(.birthday)
+                }
+            case .nonGregorianBirthday:
+                if self.nonGregorianBirthday != nil {
+                    availableKeys.insert(.nonGregorianBirthday)
+                }
+            case .note:
+                if !self.note.isEmpty {
+                    availableKeys.insert(.note)
+                }
+            case .imageData:
+                if self.imageData != nil {
+                    availableKeys.insert(.imageData)
+                }
+            case .thumbnailImageData:
+                if self.thumbnailImageData != nil {
+                    availableKeys.insert(.thumbnailImageData)
+                }
+            case .imageDataAvailable:
+                // imageDataAvailable is always available
+                availableKeys.insert(.imageDataAvailable)
+            case .phoneNumbers:
+                if !self.phoneNumbers.isEmpty {
+                    availableKeys.insert(.phoneNumbers)
+                }
+            case .emailAddresses:
+                if !self.emailAddresses.isEmpty {
+                    availableKeys.insert(.emailAddresses)
+                }
+            case .postalAddresses:
+                if !self.postalAddresses.isEmpty {
+                    availableKeys.insert(.postalAddresses)
+                }
+            case .urlAddresses:
+                if !self.urlAddresses.isEmpty {
+                    availableKeys.insert(.urlAddresses)
+                }
+            case .contactRelations:
+                if !self.contactRelations.isEmpty {
+                    availableKeys.insert(.contactRelations)
+                }
+            case .socialProfiles:
+                if !self.socialProfiles.isEmpty {
+                    availableKeys.insert(.socialProfiles)
+                }
+            case .instantMessageAddresses:
+                if !self.instantMessageAddresses.isEmpty {
+                    availableKeys.insert(.instantMessageAddresses)
+                }
+            case .dates:
+                if !self.dates.isEmpty {
+                    availableKeys.insert(.dates)
+                }
+            }
+        }
+        
+        return availableKeys
+    }
+}
+
+//MARK: Mock Data
 extension CNContact {
     static let johnDoe: CNContact = {
 
