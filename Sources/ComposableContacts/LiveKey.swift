@@ -35,8 +35,8 @@ extension ContactsClient: DependencyKey {
     public static var liveValue: Self {
         let contactActor = ContactActor()
         return Self(
-            checkAccess: { .authorized },
-            requestAccess: { try await contactActor.requestAccess() },
+            checkAuthorization: { .authorized },
+            requestAuthorization: { try await contactActor.requestAccess() },
             getDataForContacts: {_ in []},
             getDataForContact: {_ in .johnDoe},
             getKeyForContact: {""},
@@ -50,91 +50,19 @@ public final actor ContactActor {
     public static let shared = ContactActor()
     
     private var cancellables: Set<AnyCancellable> = []
-    private var composeableContactVisitor = ComposableContactVisitor()
     private let contactStore = CNContactStore()
-    private var currentHistoryToken: Data? {
-            get {
-                if usingSharedComposableContacts {
-                    return historyToken
-                } else {
-                    return externalHistoryToken
-                }
-            }
-            set {
-                if usingSharedComposableContacts {
-                    $historyToken.withLock { token in
-                        token = newValue
-                    }
-                } else {
-                    externalHistoryToken = newValue
-                }
-            }
-        }
+    private var currentHistoryToken: Data?
+    private var eventVisitor : CNChangeHistoryEventVisitor?
     
-    private var externalHistoryToken: Data?
     
-    private var externalVisitor: CNChangeHistoryEventVisitor?
-    private var eventVisitor : CNChangeHistoryEventVisitor? {
-        get {
-            if usingSharedComposableContacts {
-                return composeableContactVisitor
-            } else {
-                return externalVisitor
-            }
-        }
-    }
-    
-    private var usingSharedComposableContacts: Bool = false
-    
-    @Shared(.appStorage("composeable-contact-client-history-token")) var historyToken: Data?
-    @Shared(.inMemory("composeable-contact-composable-contact-groups")) var groups: IdentifiedArrayOf<ComposableContactGroup> = []
-    @Shared(.inMemory("composeable-contact-composable-contact-containers")) var containers: [ComposableContactContainer] = []
-    
-    func initSharedComposableContacts() throws {
-        usingSharedComposableContacts = true
-        try initContacts()
-        initGroups()
-        initContainers()
-        observeNotifications()
-    }
-    
+    //MARK: Authorization
     func initSharedExternalConfig(config: ComposableContactClientConfig) throws {
-        usingSharedComposableContacts = false
-        externalVisitor = config.eventVisitor
         currentHistoryToken = config.historyToken
-        try initContacts()
         observeNotifications()
-    }
-    
-    private func initContacts() throws {
-        try fetchChanges()
-    }
-    
-    private func initGroups() {
-        do {
-            let cnGroups = try getGroups()
-            let composeableGroups = cnGroups.map{ ComposableContactGroup($0)}
-            $groups.withLock { groups in
-                groups.append(contentsOf: composeableGroups) 
-            }
-        } catch {
-            reportIssue("Failed to initalize groups, will fall back to default empty value")
-        }
-    }
-    
-    private func initContainers() {
-        do {
-            let cnContainers = try getContainers()
-            let composeableGroups = cnContainers.map{ ComposableContactContainer($0)}
-            $containers.withLock { containers in
-                containers = composeableGroups
-            }
-        } catch {
-            reportIssue("Failed to initalize containers, will fall back to default empty value")
-        }
     }
     
     func requestAccess() async throws -> CNAuthorizationStatus {
+        try checkContactUsageDescription()
         let currentStatus = CNContactStore.authorizationStatus(for: .contacts)
         guard currentStatus == .notDetermined else {
             return currentStatus
@@ -142,6 +70,9 @@ public final actor ContactActor {
         let _ = try await contactStore.requestAccess(for: .contacts)
         return CNContactStore.authorizationStatus(for: .contacts)
     }
+    
+    
+    //MARK: Contact Retrieval
     
     func getAllContacts(with keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         try checkAuthorizationStatus()
@@ -155,7 +86,6 @@ public final actor ContactActor {
         return contacts
     }
     
-    @discardableResult
     func getContact(for id: String, and keysToFetch: Set<ComposableContactKey>) throws -> CNContact {
         var updatedKeys = keysToFetch
         updatedKeys.insert(.identifier)
@@ -164,89 +94,35 @@ public final actor ContactActor {
         return cnContact
     }
     
-    @discardableResult
     func getContacts(with identifiers: [String], and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContacts(withIdentifiers: identifiers)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    @discardableResult
     func getContacts(matching phoneNumber: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let phoneNumber = CNPhoneNumber(stringValue: phoneNumber)
         let pred = CNContact.predicateForContacts(matching: phoneNumber)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    @discardableResult
     func getContacts(matchingName name: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContacts(matchingName: name)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    @discardableResult
     func getContacts(matchingEmailAddress emailAddress: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContacts(matchingEmailAddress: emailAddress)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    @discardableResult
     func getContacts(inGroup groupIdentifier: String, and keysToFetch:Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContactsInGroup(withIdentifier: groupIdentifier)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    @discardableResult
     func getContacts(inContainer containerIdentifier: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContactsInContainer(withIdentifier: containerIdentifier)
         return try getContacts(matching: pred, and: keysToFetch)
-    }
-    
-    func getContainers(matching predicate:  NSPredicate? = nil) throws -> [CNContainer] {
-        try checkAuthorizationStatus()
-        return try contactStore.containers(matching: predicate)
-    }
-    
-    func getContainerForContact(with id: String) throws -> CNContainer {
-        let pred = CNContainer.predicateForContainerOfContact(withIdentifier: id)
-        let containers = try getContainers(matching: pred)
-        guard let container = containers.first else {
-            throw ContactError.failedToFindContainerForContact(id)
-        }
-        return container
-    }
-    
-    func getContainerForGroup(with id: String) throws -> CNContainer {
-        let pred = CNContainer.predicateForContainerOfGroup(withIdentifier: id)
-        let containers = try getContainers(matching: pred)
-        guard let container = containers.first else {
-            throw ContactError.failedToFindContainerForGroup(id)
-        }
-        return container
-    }
-    
-    func getContainerForGoup(with identifiers: [String]) throws -> [CNContainer] {
-        let pred = CNContainer.predicateForContainers(withIdentifiers: identifiers)
-        let containers = try getContainers(matching: pred)
-        return containers
-    }
-    
-    func getGroups(matching predicate:  NSPredicate? = nil) throws -> [CNGroup] {
-        try checkAuthorizationStatus()
-        return try contactStore.groups(matching: predicate)
-    }
-    
-    func getGroups(with identifiers: [String]) throws -> [CNGroup]{
-        let pred = CNGroup.predicateForGroups(withIdentifiers: identifiers)
-        return try getGroups(matching: pred)
-    }
-    
-    func getGroupsInContainer(with id: String) throws -> CNGroup {
-        let pred = CNGroup.predicateForGroupsInContainer(withIdentifier: id)
-        let groups = try getGroups(matching: pred)
-        guard let group = groups.first else {
-            throw ContactError.failedToFindGroupForID(id)
-        }
-        return group
     }
     
     private func getContacts(matching predicate: NSPredicate, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
@@ -256,38 +132,6 @@ public final actor ContactActor {
         let cnKeysToFetch = updatedKeys.map { $0.keyDescriptor }
         let cnContacts = try contactStore.unifiedContacts(matching: predicate, keysToFetch: cnKeysToFetch)
         return cnContacts
-    }
-    
-    func fetchChanges() throws {
-        try checkAuthorizationStatus()
-        let fetchRequest = CNChangeHistoryFetchRequest()
-        fetchRequest.startingToken = self.currentHistoryToken
-        fetchRequest.shouldUnifyResults = true
-        let wrapper = CNContactStoreWrapper(store: contactStore)
-        let result = wrapper.changeHistoryFetchResult(fetchRequest, error: nil)
-        guard let enumerator = result.value as? NSEnumerator else {
-            throw ContactError.failedToEnumerateChangeHistory
-        }
-        self.currentHistoryToken = result.currentHistoryToken
-        let changeEvents = enumerator.compactMap { $0 as? CNChangeHistoryEvent }
-        for event in changeEvents {
-            if let eventVisitor = eventVisitor {
-                event.accept(eventVisitor)
-            } else {
-                event.accept(composeableContactVisitor)
-            }
-        }
-    }
-    
-    func observeNotifications(){
-        NotificationCenter.default
-            .publisher(for: .CNContactStoreDidChange)
-            .sink { notification in
-                Task { @ContactActor in
-                    try? await ContactActor.shared.fetchChanges()
-                }
-            }
-            .store(in: &cancellables)
     }
     
     //MARK: Save New Contact
@@ -329,7 +173,97 @@ public final actor ContactActor {
         try contactStore.execute(saveRequest)
     }
     
+    //MARK: Container Retrieval
+    
+    func getContainers(matching predicate:  NSPredicate? = nil) throws -> [CNContainer] {
+        try checkAuthorizationStatus()
+        return try contactStore.containers(matching: predicate)
+    }
+    
+    func getContainerForContact(with id: String) throws -> CNContainer {
+        let pred = CNContainer.predicateForContainerOfContact(withIdentifier: id)
+        let containers = try getContainers(matching: pred)
+        guard let container = containers.first else {
+            throw ContactError.failedToFindContainerForContact(id)
+        }
+        return container
+    }
+    
+    func getContainerForGroup(with id: String) throws -> CNContainer {
+        let pred = CNContainer.predicateForContainerOfGroup(withIdentifier: id)
+        let containers = try getContainers(matching: pred)
+        guard let container = containers.first else {
+            throw ContactError.failedToFindContainerForGroup(id)
+        }
+        return container
+    }
+    
+    func getContainerForGoup(with identifiers: [String]) throws -> [CNContainer] {
+        let pred = CNContainer.predicateForContainers(withIdentifiers: identifiers)
+        let containers = try getContainers(matching: pred)
+        return containers
+    }
+    
+    //MARK: Group Retrieval
+    
+    func getGroups(matching predicate:  NSPredicate? = nil) throws -> [CNGroup] {
+        try checkAuthorizationStatus()
+        return try contactStore.groups(matching: predicate)
+    }
+    
+    func getGroups(with identifiers: [String]) throws -> [CNGroup]{
+        let pred = CNGroup.predicateForGroups(withIdentifiers: identifiers)
+        return try getGroups(matching: pred)
+    }
+    
+    func getGroupsInContainer(with id: String) throws -> CNGroup {
+        let pred = CNGroup.predicateForGroupsInContainer(withIdentifier: id)
+        let groups = try getGroups(matching: pred)
+        guard let group = groups.first else {
+            throw ContactError.failedToFindGroupForID(id)
+        }
+        return group
+    }
+    
+    private func fetchChanges() throws {
+        try checkAuthorizationStatus()
+        let fetchRequest = CNChangeHistoryFetchRequest()
+        fetchRequest.startingToken = self.currentHistoryToken
+        fetchRequest.shouldUnifyResults = true
+        let wrapper = CNContactStoreWrapper(store: contactStore)
+        let result = wrapper.changeHistoryFetchResult(fetchRequest, error: nil)
+        guard let enumerator = result.value as? NSEnumerator else {
+            throw ContactError.failedToEnumerateChangeHistory
+        }
+        self.currentHistoryToken = result.currentHistoryToken
+        let changeEvents = enumerator.compactMap { $0 as? CNChangeHistoryEvent }
+        guard let visitor = eventVisitor else {
+            throw ContactError.noEventVisitorAssigned
+        }
+        for event in changeEvents {
+            event.accept(visitor)
+        }
+    }
+    
+    private func observeNotifications(){
+        NotificationCenter.default
+            .publisher(for: .CNContactStoreDidChange)
+            .sink { notification in
+                Task { @ContactActor in
+                    try? await ContactActor.shared.fetchChanges()
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
     //MARK: Checks
+    
+    private func checkContactUsageDescription() throws {
+        guard let usageDescription = Bundle.main.object(forInfoDictionaryKey: "NSContactsUsageDescription") as? String else {
+            throw ContactError.NSContactsUsageDescriptionNotSet
+        }
+    }
+    
     private func checkIfWatchOS() throws {
     #if os(watchOS)
         throw ContactError.operationNotAllowed

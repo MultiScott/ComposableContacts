@@ -14,8 +14,13 @@ import DependenciesMacros
 
 @DependencyClient
 public struct ContactsClient: Sendable {
-    public var checkAccess: @Sendable () async throws -> CNAuthorizationStatus = { .authorized }
-    public var requestAccess: @Sendable () async throws -> CNAuthorizationStatus = { .authorized }
+    
+    //MARK: Authorization
+    public var checkAuthorization: @Sendable () async throws -> CNAuthorizationStatus = { .authorized }
+    public var requestAuthorization: @Sendable () async throws -> CNAuthorizationStatus = { .authorized }
+    
+    
+    //MARK: Contact Retrieval
     public var getDataForContacts: @Sendable ([ComposableContactKey]) async throws -> [CNContact] = { _ in [] }
     public var getDataForContact: @Sendable ([ComposableContactKey]) async throws -> CNContact = { _ in  .johnDoe}
     public var getKeyForContact: @Sendable () async throws -> String = {""}
@@ -32,6 +37,8 @@ public enum ContactError: Error {
     case failedToFindContainerForGroup(String)
     case failedToFindGroupForID(String)
     case unauthorized
+    case noEventVisitorAssigned
+    case NSContactsUsageDescriptionNotSet
 }
 
 public struct ComposableContactClientConfig: Sendable {
