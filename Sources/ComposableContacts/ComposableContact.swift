@@ -7,12 +7,66 @@
 
 import Foundation
 @preconcurrency import Contacts
+import IssueReporting
+
+public struct ComposableContactGroup: Codable, Identifiable, Sendable {
+    public var id: String
+    var name: String
+    var subGroups: Set<ComposableContactGroup.ID> = []
+    var contacts: Set<ComposableContact.ID> = []
+    
+    init(id: String, name: String) {
+        self.id = id
+        self.name = name
+    }
+    
+    init(_ group: CNGroup) {
+        self.id = group.identifier
+        self.name = group.name
+    }
+}
+
+public struct ComposableContactContainer: Codable, Identifiable, Sendable {
+    public var id: String
+    var name: String
+    var type: ContainerType
+    
+    init(_ group: CNContainer) {
+        self.id = group.identifier
+        self.name = group.name
+        self.type = ContainerType(type: group.type)
+    }
+    
+    enum ContainerType: Int, Codable, Sendable {
+        case local
+        case exchange
+        case cardDAV
+        case unassigned
+        
+        init(type: CNContainerType) {
+            guard let mapped = ContainerType(rawValue: type.rawValue) else {
+                self = .unassigned
+                reportIssue("Warning: Failed to map CNContainerType to ComposableContactContainer.type. Defaulting to .unassigned")
+                return
+            }
+            self = mapped
+        }
+        
+        func toCNContainerType() -> CNContainerType {
+            guard let mapped = CNContainerType(rawValue: self.rawValue) else {
+                reportIssue("Warning: Failed to map ComposableContactContainer.type to CNContainerType. Defaulting to .unassigned")
+                return .unassigned
+            }
+            return mapped
+        }
+    }
+}
 
 // Define Sendable structs with optional fields
-public struct ComposableContact: Sendable, Identifiable {
+public struct ComposableContact: Codable, Identifiable, Sendable {
     public let id: String
-    let identifier: String
-    let contactType: CNContactType?
+//    let identifier: String
+    let contactType: ContactType?
     let namePrefix: String?
     let givenName: String?
     let middleName: String?
@@ -42,16 +96,38 @@ public struct ComposableContact: Sendable, Identifiable {
     let instantMessageAddresses: [LabeledValue<InstantMessageAddress>]?
     let dates: [LabeledValue<DateComponents>]?
     
-    struct LabeledValue<Value: Sendable>: Sendable {
+    struct LabeledValue<Value: Codable & Sendable>: Codable, Sendable {
         let label: String?
         let value: Value?
     }
 
-    struct PhoneNumber: Sendable {
+    struct PhoneNumber: Codable, Sendable  {
         let stringValue: String?
     }
+    
+    enum ContactType: Int, Codable, Sendable {
+        case person = 0
+        case organization = 1
+        case unknown = -1
+        
+        init(type: CNContactType) {
+            guard let mapped = ContactType(rawValue: type.rawValue) else {
+                self = .unknown
+                return
+            }
+            self = mapped
+        }
+        
+        func toCNContactType() -> CNContactType {
+            guard let mapped = CNContactType(rawValue: self.rawValue) else {
+                reportIssue("Warning: Encountered unknown contact type. Defaulting to .person")
+                return .person
+            }
+            return mapped
+        }
+    }
 
-    struct PostalAddress: Sendable {
+    struct PostalAddress: Codable, Sendable {
         let street: String?
         let city: String?
         let state: String?
@@ -62,24 +138,24 @@ public struct ComposableContact: Sendable, Identifiable {
         let subLocality: String?
     }
 
-    struct ContactRelation: Sendable {
+    struct ContactRelation: Codable, Sendable {
         let name: String?
     }
 
-    struct SocialProfile: Sendable {
+    struct SocialProfile: Codable, Sendable {
         let urlString: String?
         let username: String?
         let userIdentifier: String?
         let service: String?
     }
 
-    struct InstantMessageAddress: Sendable {
+    struct InstantMessageAddress: Codable, Sendable {
         let username: String?
         let service: String?
     }
     
     init(identifier: String,
-         contactType: CNContactType?,
+         contactType: ContactType?,
          namePrefix: String?,
          givenName: String?,
          middleName: String?,
@@ -109,7 +185,6 @@ public struct ComposableContact: Sendable, Identifiable {
          instantMessageAddresses: [LabeledValue<InstantMessageAddress>]?,
          dates: [LabeledValue<DateComponents>]?) {
         self.id = identifier
-        self.identifier = identifier
         self.contactType = contactType
         self.namePrefix = namePrefix
         self.givenName = givenName
@@ -252,7 +327,6 @@ extension ComposableContact {
     init (_ contact: CNContact) {
         // Map properties directly
         let identifier = contact.identifier
-        let contactType = contact.contactType
         let namePrefix = contact.namePrefix
         let givenName = contact.givenName
         let middleName = contact.middleName
@@ -273,6 +347,8 @@ extension ComposableContact {
         let imageData = contact.imageData
         let thumbnailImageData = contact.thumbnailImageData
         let imageDataAvailable = contact.imageDataAvailable
+        
+        let contactType = ComposableContact.ContactType(type: contact.contactType)
 
         // Map arrays
         let phoneNumbers = contact.phoneNumbers.map { labeledValue in
@@ -343,7 +419,6 @@ extension ComposableContact {
             return ComposableContact.LabeledValue(label: label, value: value)
         }
         self.id = identifier
-        self.identifier = identifier
         self.contactType = contactType
         self.namePrefix = namePrefix
         self.givenName = givenName
@@ -382,7 +457,7 @@ extension ComposableContact {
         let mutableContact = CNMutableContact()
         
         if let contactType = self.contactType {
-            mutableContact.contactType = contactType
+            mutableContact.contactType = contactType.toCNContactType()
         }
         
         if let namePrefix = self.namePrefix {
@@ -542,7 +617,7 @@ extension ComposableContact {
 extension ComposableContact {
 
     // "John Doe" instance
-    static public let johnDoe = ComposableContact(
+    public static let johnDoe = ComposableContact(
         identifier: "john-doe-identifier",
         contactType: .person,
         namePrefix: "Mr.",
@@ -714,4 +789,36 @@ extension ComposableContact {
             )
         ]
     )
+    
+    public static let noop = ComposableContact(identifier: "",
+                                               contactType: nil,
+                                               namePrefix: nil,
+                                               givenName: nil,
+                                               middleName: nil,
+                                               familyName: nil,
+                                               previousFamilyName: nil,
+                                               nameSuffix: nil,
+                                               nickname: nil,
+                                               organizationName: nil,
+                                               departmentName: nil,
+                                               jobTitle: nil,
+                                               phoneticGivenName: nil,
+                                               phoneticMiddleName: nil,
+                                               phoneticFamilyName: nil,
+                                               phoneticOrganizationName: nil,
+                                               birthday: nil,
+                                               nonGregorianBirthday: nil,
+                                               note: nil,
+                                               imageData: nil,
+                                               thumbnailImageData: nil,
+                                               imageDataAvailable: nil,
+                                               phoneNumbers: nil,
+                                               emailAddresses: nil,
+                                               postalAddresses: nil,
+                                               urlAddresses: nil,
+                                               contactRelations: nil,
+                                               socialProfiles: nil,
+                                               instantMessageAddresses: nil,
+                                               dates: nil)
+    
 }

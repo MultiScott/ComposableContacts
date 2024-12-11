@@ -22,9 +22,11 @@ extension ContactsClient: TestDependencyKey {
 // MARK: Preview Implementation
 public extension ContactsClient {
     static let noop = Self(
+        checkAccess: { .authorized },
         requestAccess: { .authorized },
         getDataForContacts: {_ in []},
         getDataForContact: {_ in .johnDoe },
-        getKeyForContact: {""}
+        getKeyForContact: {""},
+        initSharedComposableContacts: {""}
     )
 }
