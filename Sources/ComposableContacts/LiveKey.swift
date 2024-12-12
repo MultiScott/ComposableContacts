@@ -57,6 +57,8 @@ public final actor ContactActor {
     
     //MARK: Authorization
     
+    /// Retrieves the current authorization status for accessing the user's contacts.
+    /// - Returns: The current authorization status (`CNAuthorizationStatus`) indicating whether the client is authorized, restricted, denied, or not determined.
     fileprivate func checkAuthorization() -> CNAuthorizationStatus {
         CNContactStore.authorizationStatus(for: .contacts)
     }

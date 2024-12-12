@@ -219,7 +219,7 @@ public struct ComposableContact: Codable, Identifiable, Sendable {
 
 }
 
-/// An enum representing all possible keys for accessing fields in a `ComposableContact`. They map to  the corresponding `CNKeyDescriptor` via the `keyDescriptor` variable.
+/// An enum representing all possible keys for accessing fields in a [CNContact](https://developer.apple.com/documentation/contacts/cncontact). They map to  the corresponding [CNKeyDescriptor](https://developer.apple.com/documentation/contacts/cnkeydescriptor) via the `keyDescriptor` variable.
 public enum ComposableContactKey: CaseIterable, Codable, Sendable, Equatable, Hashable {
     case identifier
     case contactType

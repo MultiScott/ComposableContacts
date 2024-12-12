@@ -299,6 +299,4 @@ extension CNContact {
         }
         return immutableContact
     }()
-    
-    
 }
