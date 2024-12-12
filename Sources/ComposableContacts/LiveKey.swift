@@ -419,9 +419,10 @@ public final actor ContactActor {
     
     /// Verifies that the current authorization status allows read/write operations.
     fileprivate func guardAuthorizationStatus() throws {
+        #if os(iOS)
         if #available(iOS 18.0, *) {
             guard CNContactStore.authorizationStatus(for: .contacts) == .authorized ||
-                    CNContactStore.authorizationStatus(for: .contacts) == .limited else {
+                  CNContactStore.authorizationStatus(for: .contacts) == .limited else {
                 throw ContactError.unauthorized
             }
         } else {
@@ -429,6 +430,12 @@ public final actor ContactActor {
                 throw ContactError.unauthorized
             }
         }
+        #else
+        // On platforms where `.limited` is not available, just check for `.authorized`.
+        guard CNContactStore.authorizationStatus(for: .contacts) == .authorized else {
+            throw ContactError.unauthorized
+        }
+        #endif
     }
 }
 
