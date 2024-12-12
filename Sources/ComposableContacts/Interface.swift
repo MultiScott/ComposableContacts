@@ -15,7 +15,12 @@ import DependenciesMacros
 /// A `DependencyClient` that provides an interface to Apple's Contacts API using async functions.
 /// The `ContactsClient` encapsulates authorization checks, configuration, contact retrieval, and contact mutation.
 ///
+/// **Setup**
+///  - Set `NSContactsUsageDescription` in your info.plist
+///  - Request authorization
+///  - Then set the configuration on the actor
 ///
+///  If the configuration is not set then no events will be relayed to the `CNChangeHistoryEventVisitor`
 ///
 /// `ContactsClient` uses [CNContact](https://developer.apple.com/documentation/contacts/cncontact) as input's and outputs for various pieces of functionality.
 ///
