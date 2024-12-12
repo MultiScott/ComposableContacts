@@ -10,8 +10,6 @@
 @preconcurrency import Contacts
 import CNContactStoreWrapper
 import Dependencies
-import IdentifiedCollections
-import Sharing
 import Combine
 
 // MARK: Live
