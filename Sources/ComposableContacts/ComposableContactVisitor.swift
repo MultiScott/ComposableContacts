@@ -11,6 +11,19 @@ import Sharing
 import IdentifiedCollections
 import IssueReporting
 
+public extension SharedReaderKey where Self == InMemoryKey<IdentifiedArrayOf<ComposableContact>> {
+  static var composableContacts: Self {
+    inMemory("composableContacts")
+  }
+}
+
+public extension SharedReaderKey where Self == InMemoryKey<IdentifiedArrayOf<ComposableContact>>.Default {
+  static var composableContacts: Self {
+      Self[.composableContacts,
+         default: []]
+  }
+}
+
 final class ComposableContactVisitor: NSObject, CNChangeHistoryEventVisitor, @unchecked Sendable {
     
     @Shared(.inMemory("composeable-contact-composable-contacts")) var contacts: IdentifiedArrayOf<ComposableContact> = []

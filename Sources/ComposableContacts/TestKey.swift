@@ -22,11 +22,27 @@ extension ContactsClient: TestDependencyKey {
 // MARK: Preview Implementation
 public extension ContactsClient {
     static let noop = Self(
-        checkAccess: { .authorized },
-        requestAccess: { .authorized },
-        getDataForContacts: {_ in []},
-        getDataForContact: {_ in .johnDoe },
-        getKeyForContact: {""},
-        initSharedComposableContacts: {""}
+        checkAuthorization: { .authorized  },
+        requestAuthorization: { .authorized },
+        configureContactActor: {_ in},
+        getAllContacts: {_ in [.johnDoe, .janeDoe]},
+        getContact: {_ in .johnDoe},
+        getContactsInContainer: { _ in [] },
+        getContactsInGroup: { _ in [] },
+        getContactsMatchingEmail: { _ in [] },
+        getContactsMatchingName: { _ in [] },
+        getContactsMatchingPhoneNumber: { _ in [] },
+        getContactsWithIdentifiers: { _ in [] },
+        createNewContact: { _ in },
+        createNewContacts: { _ in },
+        modifyContact: { _ in },
+        modifyContacts: { _ in },
+        getAllContainers: { [] },
+        getContainerForContactID: { _ in .init() },
+        getContainerOfGroupWithID: { _ in .init() },
+        getContainerOfGroupsWithIDs: { _ in [] },
+        getAllGroups: { [] },
+        getAllGroupsWithIdentifiers: { _ in [] },
+        getAllGroupsInContainerWithID: { _ in .init() }
     )
 }

@@ -14,33 +14,34 @@ import IdentifiedCollections
 import Sharing
 import Combine
 
-
-public extension SharedReaderKey where Self == InMemoryKey<IdentifiedArrayOf<ComposableContact>> {
-  static var composableContacts: Self {
-    inMemory("composableContacts")
-  }
-}
-
-public extension SharedReaderKey where Self == InMemoryKey<IdentifiedArrayOf<ComposableContact>>.Default {
-  static var composableContacts: Self {
-      Self[.composableContacts,
-         default: []]
-  }
-}
-
 // MARK: Live
 @available(iOSApplicationExtension, unavailable)
 extension ContactsClient: DependencyKey {
     // Map Interface to live methods
     public static var liveValue: Self {
-        let contactActor = ContactActor()
         return Self(
-            checkAuthorization: { .authorized },
-            requestAuthorization: { try await contactActor.requestAccess() },
-            getDataForContacts: {_ in []},
-            getDataForContact: {_ in .johnDoe},
-            getKeyForContact: {""},
-            initSharedComposableContacts: {""}
+            checkAuthorization: { return await ContactActor.shared.checkAuthorization() },
+            requestAuthorization: {return try await ContactActor.shared.requestAccess()},
+            configureContactActor: {config in try await ContactActor.shared.configureActor(with: config)},
+            getAllContacts: {keys in try await ContactActor.shared.getAllContacts(with: keys)},
+            getContact: {request in try await ContactActor.shared.getContact(for: request.identifier, and: request.keysToFetch)},
+            getContactsInContainer: {request in try await ContactActor.shared.getContacts(inContainer: request.containerID, and: request.keysToFetch)},
+            getContactsInGroup: {request in try await ContactActor.shared.getContacts(inGroup: request.groupID, and: request.keysToFetch)},
+            getContactsMatchingEmail: {request in try await ContactActor.shared.getContacts(matchingEmailAddress: request.email, and: request.keysToFetch)},
+            getContactsMatchingName: {request in try await ContactActor.shared.getContacts(matchingName: request.name, and: request.keysToFetch)},
+            getContactsMatchingPhoneNumber: {request in try await ContactActor.shared.getContacts(matchingphoneNumber: request.phoneNumber, and: request.keysToFetch)},
+            getContactsWithIdentifiers: {request in try await ContactActor.shared.getContacts(withIdentifiers: request.identifiers, and: request.keysToFetch)},
+            createNewContact: {contact in try await ContactActor.shared.createNewContact(contact: contact) },
+            createNewContacts: {contacts in try await ContactActor.shared.createNewContacts(contacts: contacts)},
+            modifyContact: {contact in try await ContactActor.shared.modifyContact(contact: contact) },
+            modifyContacts: {contacts in try await ContactActor.shared.modifyContacts(contacts: contacts) },
+            getAllContainers: { try await ContactActor.shared.getContainers() },
+            getContainerForContactID: {contactID in try await ContactActor.shared.getContainerForContact(with: contactID) },
+            getContainerOfGroupWithID: {ID in try await ContactActor.shared.getContainerOfGroup(with: ID) },
+            getContainerOfGroupsWithIDs: {IDs in try await ContactActor.shared.getContainerForGoups(with: IDs) },
+            getAllGroups: { try await ContactActor.shared.getGroups() },
+            getAllGroupsWithIdentifiers: {IDs in try await ContactActor.shared.getGroups(with: IDs) },
+            getAllGroupsInContainerWithID: {ID in try await ContactActor.shared.getGroupsInContainer(with: ID) }
         )
     }
 }
@@ -54,15 +55,14 @@ public final actor ContactActor {
     private var currentHistoryToken: Data?
     private var eventVisitor : CNChangeHistoryEventVisitor?
     
-    
     //MARK: Authorization
-    func initSharedExternalConfig(config: ComposableContactClientConfig) throws {
-        currentHistoryToken = config.historyToken
-        observeNotifications()
+    
+    fileprivate func checkAuthorization() -> CNAuthorizationStatus {
+        CNContactStore.authorizationStatus(for: .contacts)
     }
     
-    func requestAccess() async throws -> CNAuthorizationStatus {
-        try checkContactUsageDescription()
+    fileprivate func requestAccess() async throws -> CNAuthorizationStatus {
+        try guardContactUsageDescription()
         let currentStatus = CNContactStore.authorizationStatus(for: .contacts)
         guard currentStatus == .notDetermined else {
             return currentStatus
@@ -72,10 +72,26 @@ public final actor ContactActor {
     }
     
     
+    //MARK: Config
+    
+    fileprivate func configureActor(with config: ComposableContactConfig) throws {
+        currentHistoryToken = config.historyToken
+        eventVisitor = config.eventVisitor
+        observeNotifications()
+    }
+    
     //MARK: Contact Retrieval
     
-    func getAllContacts(with keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
-        try checkAuthorizationStatus()
+    fileprivate func getContact(for id: String, and keysToFetch: Set<ComposableContactKey>) throws -> CNContact {
+        var updatedKeys = keysToFetch
+        updatedKeys.insert(.identifier)
+        let cnKeysToFetch = updatedKeys.map { $0.keyDescriptor }
+        let cnContact = try contactStore.unifiedContact(withIdentifier: id, keysToFetch: cnKeysToFetch)
+        return cnContact
+    }
+    
+    fileprivate func getAllContacts(with keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
+        try guardAuthorizationStatus()
         var updatedKeys = keysToFetch
         updatedKeys.insert(.identifier)
         let request = CNContactFetchRequest(keysToFetch: updatedKeys.map {$0.keyDescriptor})
@@ -86,47 +102,39 @@ public final actor ContactActor {
         return contacts
     }
     
-    func getContact(for id: String, and keysToFetch: Set<ComposableContactKey>) throws -> CNContact {
-        var updatedKeys = keysToFetch
-        updatedKeys.insert(.identifier)
-        let cnKeysToFetch = updatedKeys.map { $0.keyDescriptor }
-        let cnContact = try contactStore.unifiedContact(withIdentifier: id, keysToFetch: cnKeysToFetch)
-        return cnContact
-    }
-    
-    func getContacts(with identifiers: [String], and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
+    fileprivate func getContacts(withIdentifiers identifiers: [String], and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContacts(withIdentifiers: identifiers)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    func getContacts(matching phoneNumber: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
+    fileprivate func getContacts(matchingphoneNumber phoneNumber: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let phoneNumber = CNPhoneNumber(stringValue: phoneNumber)
         let pred = CNContact.predicateForContacts(matching: phoneNumber)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    func getContacts(matchingName name: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
+    fileprivate func getContacts(matchingName name: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContacts(matchingName: name)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    func getContacts(matchingEmailAddress emailAddress: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
+    fileprivate func getContacts(matchingEmailAddress emailAddress: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContacts(matchingEmailAddress: emailAddress)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    func getContacts(inGroup groupIdentifier: String, and keysToFetch:Set<ComposableContactKey>) throws -> [CNContact] {
+    fileprivate func getContacts(inGroup groupIdentifier: String, and keysToFetch:Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContactsInGroup(withIdentifier: groupIdentifier)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    func getContacts(inContainer containerIdentifier: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
+    fileprivate func getContacts(inContainer containerIdentifier: String, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
         let pred = CNContact.predicateForContactsInContainer(withIdentifier: containerIdentifier)
         return try getContacts(matching: pred, and: keysToFetch)
     }
     
-    private func getContacts(matching predicate: NSPredicate, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
-        try checkAuthorizationStatus()
+    fileprivate func getContacts(matching predicate: NSPredicate, and keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
+        try guardAuthorizationStatus()
         var updatedKeys = keysToFetch
         updatedKeys.insert(.identifier)
         let cnKeysToFetch = updatedKeys.map { $0.keyDescriptor }
@@ -134,10 +142,10 @@ public final actor ContactActor {
         return cnContacts
     }
     
-    //MARK: Save New Contact
-    func createNewContact(contact: CNContact, to containerWithIdentifier: String? = nil) throws {
-        try checkIfWatchOS()
-        try checkAuthorizationStatus()
+    //MARK: Contact Writes
+    fileprivate func createNewContact(contact: CNContact, to containerWithIdentifier: String? = nil) async throws {
+        try guardIfWatchOS()
+        try guardAuthorizationStatus()
         guard let mutableContact = contact.mutableCopy() as? CNMutableContact else {
             throw ContactError.failedToCreateMutableCopy
         }
@@ -146,25 +154,22 @@ public final actor ContactActor {
         try contactStore.execute(saveRequest)
     }
     
-    func createNewContacts(contacts: Set<CNContact>, to containerWithIdentifier: String? = nil) throws {
-        try checkIfWatchOS()
-        try checkAuthorizationStatus()
+    fileprivate func createNewContacts(contacts: UncheckedSendable<Set<CNContact>>, to containerWithIdentifier: String? = nil) async throws {
+        try guardIfWatchOS()
+        try guardAuthorizationStatus()
         let saveRequest = CNSaveRequest()
-        var mutableContacts: [CNMutableContact] = []
-        for contact in contacts {
+        for contact in contacts.value {
             guard let newContact = contact.mutableCopy() as? CNMutableContact else {
                 throw ContactError.failedToCreateMutableCopy
             }
             saveRequest.add(newContact, toContainerWithIdentifier: containerWithIdentifier)
-            mutableContacts.append(newContact)
         }
         try contactStore.execute(saveRequest)
     }
     
-    //MARK: Modify Contact
-    func modifyContact(contact: CNContact) throws {
-        try checkIfWatchOS()
-        try checkAuthorizationStatus()
+    fileprivate func modifyContact(contact: CNContact) async throws {
+        try guardIfWatchOS()
+        try guardAuthorizationStatus()
         guard let mutableContact = contact.mutableCopy() as? CNMutableContact else {
             throw ContactError.failedToCreateMutableCopy
         }
@@ -173,14 +178,27 @@ public final actor ContactActor {
         try contactStore.execute(saveRequest)
     }
     
+    fileprivate func modifyContacts(contacts: UncheckedSendable<Set<CNContact>>) async throws {
+        try guardIfWatchOS()
+        try guardAuthorizationStatus()
+        let saveRequest = CNSaveRequest()
+        for contact in contacts.value {
+            guard let mutableContact = contact.mutableCopy() as? CNMutableContact else {
+                throw ContactError.failedToCreateMutableCopy
+            }
+            saveRequest.update(mutableContact)
+        }
+        try contactStore.execute(saveRequest)
+    }
+    
     //MARK: Container Retrieval
     
-    func getContainers(matching predicate:  NSPredicate? = nil) throws -> [CNContainer] {
-        try checkAuthorizationStatus()
+    fileprivate func getContainers(matching predicate:  NSPredicate? = nil) throws -> [CNContainer] {
+        try guardAuthorizationStatus()
         return try contactStore.containers(matching: predicate)
     }
     
-    func getContainerForContact(with id: String) throws -> CNContainer {
+    fileprivate func getContainerForContact(with id: String) async throws -> CNContainer {
         let pred = CNContainer.predicateForContainerOfContact(withIdentifier: id)
         let containers = try getContainers(matching: pred)
         guard let container = containers.first else {
@@ -189,7 +207,7 @@ public final actor ContactActor {
         return container
     }
     
-    func getContainerForGroup(with id: String) throws -> CNContainer {
+    fileprivate func getContainerOfGroup(with id: String) async throws -> CNContainer {
         let pred = CNContainer.predicateForContainerOfGroup(withIdentifier: id)
         let containers = try getContainers(matching: pred)
         guard let container = containers.first else {
@@ -198,7 +216,7 @@ public final actor ContactActor {
         return container
     }
     
-    func getContainerForGoup(with identifiers: [String]) throws -> [CNContainer] {
+    fileprivate func getContainerForGoups(with identifiers: [String])async  throws -> [CNContainer] {
         let pred = CNContainer.predicateForContainers(withIdentifiers: identifiers)
         let containers = try getContainers(matching: pred)
         return containers
@@ -206,17 +224,17 @@ public final actor ContactActor {
     
     //MARK: Group Retrieval
     
-    func getGroups(matching predicate:  NSPredicate? = nil) throws -> [CNGroup] {
-        try checkAuthorizationStatus()
+    fileprivate func getGroups(matching predicate:  NSPredicate? = nil) throws -> [CNGroup] {
+        try guardAuthorizationStatus()
         return try contactStore.groups(matching: predicate)
     }
     
-    func getGroups(with identifiers: [String]) throws -> [CNGroup]{
+    fileprivate func getGroups(with identifiers: [String]) async throws -> [CNGroup]{
         let pred = CNGroup.predicateForGroups(withIdentifiers: identifiers)
         return try getGroups(matching: pred)
     }
     
-    func getGroupsInContainer(with id: String) throws -> CNGroup {
+    fileprivate func getGroupsInContainer(with id: String) async throws -> CNGroup {
         let pred = CNGroup.predicateForGroupsInContainer(withIdentifier: id)
         let groups = try getGroups(matching: pred)
         guard let group = groups.first else {
@@ -225,8 +243,8 @@ public final actor ContactActor {
         return group
     }
     
-    private func fetchChanges() throws {
-        try checkAuthorizationStatus()
+    fileprivate func fetchChanges() throws {
+        try guardAuthorizationStatus()
         let fetchRequest = CNChangeHistoryFetchRequest()
         fetchRequest.startingToken = self.currentHistoryToken
         fetchRequest.shouldUnifyResults = true
@@ -245,7 +263,7 @@ public final actor ContactActor {
         }
     }
     
-    private func observeNotifications(){
+    fileprivate func observeNotifications(){
         NotificationCenter.default
             .publisher(for: .CNContactStoreDidChange)
             .sink { notification in
@@ -256,21 +274,21 @@ public final actor ContactActor {
             .store(in: &cancellables)
     }
     
-    //MARK: Checks
+    //MARK: Guards
     
-    private func checkContactUsageDescription() throws {
-        guard let usageDescription = Bundle.main.object(forInfoDictionaryKey: "NSContactsUsageDescription") as? String else {
+    fileprivate func guardContactUsageDescription() throws {
+        guard let _ = Bundle.main.object(forInfoDictionaryKey: "NSContactsUsageDescription") as? String else {
             throw ContactError.NSContactsUsageDescriptionNotSet
         }
     }
     
-    private func checkIfWatchOS() throws {
+    fileprivate func guardIfWatchOS() throws {
     #if os(watchOS)
-        throw ContactError.operationNotAllowed
+        throw ContactError.operationNotAllowedOnWatchOS
     #endif
     }
     
-    private func checkAuthorizationStatus() throws {
+    fileprivate func guardAuthorizationStatus() throws {
         if #available(iOS 18.0, *) {
             guard CNContactStore.authorizationStatus(for: .contacts) == .authorized ||
                     CNContactStore.authorizationStatus(for: .contacts) == .limited else {
