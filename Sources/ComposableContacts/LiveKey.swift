@@ -21,8 +21,8 @@ extension ContactsClient: DependencyKey {
             checkAuthorization: { return await ContactActor.shared.checkAuthorization() },
             requestAuthorization: {return try await ContactActor.shared.requestAccess()},
             configureContactActor: {config in try await ContactActor.shared.configureActor(with: config)},
-            getAllContacts: {keys in try await ContactActor.shared.getAllContacts(with: keys)},
-            getContact: {request in try await ContactActor.shared.getContact(for: request.identifier, and: request.keysToFetch)},
+            getAllContacts: {request in try await ContactActor.shared.getAllContacts(with: request.keysToFetch, in: request.order)},
+            getContact: {request in try await ContactActor.shared.getContact(with: request.identifier, and: request.keysToFetch)},
             getContactsInContainer: {request in try await ContactActor.shared.getContacts(inContainer: request.containerID, and: request.keysToFetch)},
             getContactsInGroup: {request in try await ContactActor.shared.getContacts(inGroup: request.groupID, and: request.keysToFetch)},
             getContactsMatchingEmail: {request in try await ContactActor.shared.getContacts(matchingEmailAddress: request.email, and: request.keysToFetch)},
@@ -133,7 +133,7 @@ public final actor ContactActor {
     ///   - id: The unique identifier of the contact to retrieve.
     ///   - keysToFetch: A set of `ComposableContactKey` values specifying which properties to include.
     /// - Returns: The `CNContact` matching the given identifier.
-    fileprivate func getContact(for id: String, and keysToFetch: Set<ComposableContactKey>) throws -> CNContact {
+    fileprivate func getContact(with id: String, and keysToFetch: Set<ComposableContactKey>) throws -> CNContact {
         var updatedKeys = keysToFetch
         updatedKeys.insert(.identifier)
         let cnKeysToFetch = updatedKeys.map { $0.keyDescriptor }
@@ -145,11 +145,12 @@ public final actor ContactActor {
     ///
     /// - Parameter keysToFetch: A set of `ComposableContactKey` values specifying which properties to include.
     /// - Returns: An array of `CNContact` objects for all contacts accessible to this application.
-    fileprivate func getAllContacts(with keysToFetch: Set<ComposableContactKey>) throws -> [CNContact] {
+    fileprivate func getAllContacts(with keysToFetch: Set<ComposableContactKey>, in order: CNContactSortOrder) throws -> [CNContact] {
         try guardAuthorizationStatus()
         var updatedKeys = keysToFetch
         updatedKeys.insert(.identifier)
         let request = CNContactFetchRequest(keysToFetch: updatedKeys.map {$0.keyDescriptor})
+        request.sortOrder = order
         var contacts: [CNContact] = []
         try contactStore.enumerateContacts(with: request) { contact, _ in
             contacts.append(contact)

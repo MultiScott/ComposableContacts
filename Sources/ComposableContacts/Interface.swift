@@ -54,7 +54,7 @@ public struct ContactsClient: Sendable {
     /// Retrieves all contacts with the properties outined  requested in a set of keys to fetch.
     /// - Parameter keysToFetch: A set of `ComposableContactKey` indicating which contact properties should be fetched.
     /// - Returns: An array of `CNContact` matching the requested keys.
-    public var getAllContacts: @Sendable ( Set<ComposableContactKey>) async throws -> [CNContact] = { _ in [] }
+    public var getAllContacts: @Sendable ( AllContactsRequest ) async throws -> [CNContact] = { _ in [] }
     
     /// Retrieves a single contact by its identifier.
     /// - Parameter request: A `ContactWithIdentifierRequest` specifying the contact's identifier and keys to fetch.
@@ -177,7 +177,7 @@ public enum ContactError: Error {
    
 }
 /// Configuration options for the contact actor.
-/// Contains optional change history tokens and a `CNChangeHistoryEventVisitor` to track contact store changes.
+/// Contains optional change history tokens and a `CNChangeHistoryEventVisitor` to respond to contact store changes.
 public struct ComposableContactConfig: Sendable {
     /// A token representing the state of the contact store at a particular point in time.
     let historyToken: Data?
@@ -203,6 +203,19 @@ public struct ContactWithIdentifierRequest: Sendable {
     }
 }
 
+public struct AllContactsRequest: Sendable {
+    /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
+    let keysToFetch: Set<ComposableContactKey>
+    
+    /// The order in wich to sort the contacts when they are returned
+    let order: CNContactSortOrder
+    
+    public init(keysToFetch: Set<ComposableContactKey>, order: CNContactSortOrder = .userDefault){
+        self.order = order
+        self.keysToFetch = keysToFetch
+    }
+}
+
 /// A request structure for retrieving multiple contacts by their identifiers and specifying keys to fetch.
 public struct ContactsWithIdentifiersRequest: Sendable {
     /// A list of contact identifiers.
@@ -210,9 +223,13 @@ public struct ContactsWithIdentifiersRequest: Sendable {
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
     
-    public init(identifiers: [String], keysToFetch: Set<ComposableContactKey>) {
+    /// The order in wich to sort the contacts when they are returned
+    let order: CNContactSortOrder
+    
+    public init(identifiers: [String], keysToFetch: Set<ComposableContactKey>, order: CNContactSortOrder = .userDefault) {
         self.identifiers = identifiers
         self.keysToFetch = keysToFetch
+        self.order = order
     }
 }
 
@@ -223,9 +240,13 @@ public struct ContactsMatchingPhoneNumberRequest: Sendable {
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
     
-    public init(phoneNumber: String, keysToFetch: Set<ComposableContactKey>) {
+    /// The order in wich to sort the contacts when they are returned
+    let order: CNContactSortOrder
+
+    public init(phoneNumber: String, keysToFetch: Set<ComposableContactKey>,  order: CNContactSortOrder = .userDefault) {
         self.phoneNumber = phoneNumber
         self.keysToFetch = keysToFetch
+        self.order = order
     }
 }
 
@@ -235,10 +256,14 @@ public struct ContactsMatchingNameRequest: Sendable {
     let name: String
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
+   
+    /// The order in wich to sort the contacts when they are returned
+    let order: CNContactSortOrder
     
-    public init(name: String, keysToFetch: Set<ComposableContactKey>) {
+    public init(name: String, keysToFetch: Set<ComposableContactKey>, order: CNContactSortOrder = .userDefault) {
         self.name = name
         self.keysToFetch = keysToFetch
+        self.order = order
     }
 }
 
@@ -249,9 +274,13 @@ public struct ContactsMatchingEmailRequest: Sendable {
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
     
-    public init(email: String, keysToFetch: Set<ComposableContactKey>) {
+    /// The order in wich to sort the contacts when they are returned
+    let order: CNContactSortOrder
+    
+    public init(email: String, keysToFetch: Set<ComposableContactKey>, order: CNContactSortOrder = .userDefault) {
         self.email = email
         self.keysToFetch = keysToFetch
+        self.order = order
     }
 }
 
@@ -262,9 +291,13 @@ public struct ContactsInGroupRequest: Sendable {
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
     
-    public init(groupID: String, keysToFetch: Set<ComposableContactKey>) {
+    /// The order in wich to sort the contacts when they are returned
+    let order: CNContactSortOrder
+    
+    public init(groupID: String, keysToFetch: Set<ComposableContactKey>, order: CNContactSortOrder = .userDefault) {
         self.groupID = groupID
         self.keysToFetch = keysToFetch
+        self.order = order
     }
 }
 
@@ -275,8 +308,12 @@ public struct ContactsInContainerRequest: Sendable {
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
     
-    public init(containerID: String, keysToFetch: Set<ComposableContactKey>) {
+    /// The order in wich to sort the contacts when they are returned
+    let order: CNContactSortOrder
+    
+    public init(containerID: String, keysToFetch: Set<ComposableContactKey>, order: CNContactSortOrder = .userDefault) {
         self.containerID = containerID
         self.keysToFetch = keysToFetch
+        self.order = order
     }
 }
