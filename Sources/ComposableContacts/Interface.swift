@@ -179,6 +179,11 @@ public struct ComposableContactConfig: Sendable {
     let historyToken: Data?
     /// An event visitor for enumerating and responding to change history events in the contact store.
     let eventVisitor: CNChangeHistoryEventVisitor
+    
+    public init(historyToken: Data?, eventVisitor: CNChangeHistoryEventVisitor) {
+        self.historyToken = historyToken
+        self.eventVisitor = eventVisitor
+    }
 }
 
 /// A request structure specifying a contact to retrieve by its identifier along with the keys to fetch.
@@ -187,6 +192,11 @@ public struct ContactWithIdentifierRequest: Sendable {
     let identifier: String
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
+    
+    public init(identifier: String, keysToFetch: Set<ComposableContactKey>) {
+        self.identifier = identifier
+        self.keysToFetch = keysToFetch
+    }
 }
 
 /// A request structure for retrieving multiple contacts by their identifiers and specifying keys to fetch.
@@ -195,6 +205,11 @@ public struct ContactsWithIdentifiersRequest: Sendable {
     let identifiers: [String]
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
+    
+    public init(identifiers: [String], keysToFetch: Set<ComposableContactKey>) {
+        self.identifiers = identifiers
+        self.keysToFetch = keysToFetch
+    }
 }
 
 /// A request structure for retrieving contacts by a phone number.
@@ -203,6 +218,11 @@ public struct ContactsMatchingPhoneNumberRequest: Sendable {
     let phoneNumber: String
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
+    
+    public init(phoneNumber: String, keysToFetch: Set<ComposableContactKey>) {
+        self.phoneNumber = phoneNumber
+        self.keysToFetch = keysToFetch
+    }
 }
 
 /// A request structure for retrieving contacts by a name substring or full name.
@@ -211,6 +231,11 @@ public struct ContactsMatchingNameRequest: Sendable {
     let name: String
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
+    
+    public init(name: String, keysToFetch: Set<ComposableContactKey>) {
+        self.name = name
+        self.keysToFetch = keysToFetch
+    }
 }
 
 /// A request structure for retrieving contacts by an email address.
@@ -219,6 +244,11 @@ public struct ContactsMatchingEmailRequest: Sendable {
     let email: String
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
+    
+    public init(email: String, keysToFetch: Set<ComposableContactKey>) {
+        self.email = email
+        self.keysToFetch = keysToFetch
+    }
 }
 
 /// A request structure for retrieving contacts that belong to a specific group.
@@ -227,6 +257,11 @@ public struct ContactsInGroupRequest: Sendable {
     let groupID: String
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
+    
+    public init(groupID: String, keysToFetch: Set<ComposableContactKey>) {
+        self.groupID = groupID
+        self.keysToFetch = keysToFetch
+    }
 }
 
 /// A request structure for retrieving contacts in a specific container.
@@ -235,4 +270,9 @@ public struct ContactsInContainerRequest: Sendable {
     let containerID: String
     /// A set of `ComposableContactKey` values indicating which contact properties to fetch.
     let keysToFetch: Set<ComposableContactKey>
+    
+    public init(containerID: String, keysToFetch: Set<ComposableContactKey>) {
+        self.containerID = containerID
+        self.keysToFetch = keysToFetch
+    }
 }

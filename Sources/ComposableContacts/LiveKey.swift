@@ -33,11 +33,11 @@ extension ContactsClient: DependencyKey {
             createNewContacts: {contacts in try await ContactActor.shared.createNewContacts(contacts: contacts)},
             modifyContact: {contact in try await ContactActor.shared.modifyContact(contact: contact) },
             modifyContacts: {contacts in try await ContactActor.shared.modifyContacts(contacts: contacts) },
-            getAllContainers: { try await ContactActor.shared.getContainers() },
+            getAllContainers: { try await ContactActor.shared.getAllContainers() },
             getContainerForContactID: {contactID in try await ContactActor.shared.getContainerForContact(with: contactID) },
             getContainerOfGroupWithID: {ID in try await ContactActor.shared.getContainerOfGroup(with: ID) },
             getContainerOfGroupsWithIDs: {IDs in try await ContactActor.shared.getContainerForGoups(with: IDs) },
-            getAllGroups: { try await ContactActor.shared.getGroups() },
+            getAllGroups: { try await ContactActor.shared.getAllGroups() },
             getAllGroupsWithIdentifiers: {IDs in try await ContactActor.shared.getGroups(with: IDs) },
             getAllGroupsInContainerWithID: {ID in try await ContactActor.shared.getGroupsInContainer(with: ID) }
         )
@@ -297,6 +297,10 @@ public final actor ContactActor {
         return try contactStore.containers(matching: predicate)
     }
     
+    fileprivate func getAllContainers() throws -> [CNContainer] {
+        return try getContainers()
+    }
+    
     /// Retrieves the container for a given contact.
     ///
     /// - Parameter id: The identifier of the contact.
@@ -342,6 +346,10 @@ public final actor ContactActor {
     fileprivate func getGroups(matching predicate:  NSPredicate? = nil) throws -> [CNGroup] {
         try guardAuthorizationStatus()
         return try contactStore.groups(matching: predicate)
+    }
+    
+    fileprivate func getAllGroups() throws -> [CNGroup] {
+        return try getGroups()
     }
     
     /// Retrieves groups by their identifiers.
