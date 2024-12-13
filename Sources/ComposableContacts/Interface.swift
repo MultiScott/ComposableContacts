@@ -46,7 +46,8 @@ public struct ContactsClient: Sendable {
     /// This is used to set up event visitors or history tokens for change-tracking in the contact store.
     /// - Parameter config: A `ComposableContactConfig` containing a history token and a change history event visitor.
     /// - Throws: May throw if configuration fails.
-    public var configureContactActor: @Sendable (ComposableContactConfig) async throws -> Void = {_ in }
+    /// - Returns: An array of `AsyncStream<Data?>` that streams updates of the history token.
+    public var configureContactActor: @Sendable (ComposableContactConfig) async throws -> AsyncStream<Data?> = {_ in  .finished}
     
     //MARK: Contact Retrieval
     
@@ -157,20 +158,23 @@ public enum ContactError: Error {
     case failedToEnumerateChangeHistory
     /// Indicates a failure to map the `CNContactType` (e.g., unknown or unsupported type).
     case failedToMapContactType
-    /// Indicates an attempted operation that is not allowed on watchOS devices.
-    case operationNotAllowedOnWatchOS
     /// Indicates that no container could be found for a given contact.
     case failedToFindContainerForContact(String)
     /// Indicates that no container could be found for a given group.
     case failedToFindContainerForGroup(String)
     /// Indicates that no group could be found for the given group ID.
     case failedToFindGroupForID(String)
-    /// Indicates that the user is not authorized to access contacts.
-    case unauthorized
+    /// Indicates an attempted operation that is not allowed on watchOS devices.
+    case operationNotAllowedOnWatchOS
     /// Indicates that no `CNChangeHistoryEventVisitor` was assigned when required.
     case noEventVisitorAssigned
+    /// Indicates that the `AsyncStream<Data?>` had not been set on the ContactActor
+    case noDataStreamSet
     /// Indicates that the `NSContactsUsageDescription` key is not set in the Info.plist.
     case NSContactsUsageDescriptionNotSet
+    /// Indicates that the user is not authorized to access contacts.
+    case unauthorized
+   
 }
 /// Configuration options for the contact actor.
 /// Contains optional change history tokens and a `CNChangeHistoryEventVisitor` to track contact store changes.

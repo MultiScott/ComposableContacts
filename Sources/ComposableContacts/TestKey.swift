@@ -24,7 +24,7 @@ public extension ContactsClient {
     static let noop = Self(
         checkAuthorization: { .authorized  },
         requestAuthorization: { .authorized },
-        configureContactActor: {_ in},
+        configureContactActor: {_ in .finished},
         getAllContacts: {_ in [.johnDoe, .janeDoe]},
         getContact: {_ in .johnDoe},
         getContactsInContainer: { _ in [] },

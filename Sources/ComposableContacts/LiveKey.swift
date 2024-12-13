@@ -66,6 +66,21 @@ public final actor ContactActor {
     private let contactStore = CNContactStore()
     private var currentHistoryToken: Data?
     private var eventVisitor : CNChangeHistoryEventVisitor?
+    private var continuation: AsyncStream<Data?>.Continuation?
+    private var dataStream: AsyncStream<Data?>?
+    
+    init() {
+        // Initialize the async stream
+        var tokenCont: AsyncStream<Data?>.Continuation!
+        dataStream = AsyncStream<Data?> { continuation in
+            tokenCont = continuation
+        }
+        continuation = tokenCont
+    }
+    
+    deinit {
+        continuation?.finish()
+    }
     
     //MARK: Authorization
     
@@ -95,10 +110,19 @@ public final actor ContactActor {
     /// Configures the contact actor with a given `ComposableContactConfig`, setting up event visitors and history tokens.
     ///
     /// - Parameter config: A `ComposableContactConfig` containing a history token and a change history event visitor.
-    fileprivate func configureActor(with config: ComposableContactConfig) throws {
+    fileprivate func configureActor(with config: ComposableContactConfig) throws -> AsyncStream<Data?> {
         currentHistoryToken = config.historyToken
         eventVisitor = config.eventVisitor
         observeNotifications()
+        return try getTokenStream()
+    }
+    
+    ///Returns the `AsyncStream<Data?>` for the historyToken
+    fileprivate func getTokenStream() throws -> AsyncStream<Data?> {
+        guard let dataStream else {
+            throw ContactError.noDataStreamSet
+        }
+        return dataStream
     }
     
     //MARK: Contact Retrieval
@@ -376,14 +400,15 @@ public final actor ContactActor {
     fileprivate func fetchChanges() throws {
         try guardAuthorizationStatus()
         let fetchRequest = CNChangeHistoryFetchRequest()
-        fetchRequest.startingToken = self.currentHistoryToken
+        fetchRequest.startingToken = currentHistoryToken
         fetchRequest.shouldUnifyResults = true
         let wrapper = CNContactStoreWrapper(store: contactStore)
         let result = wrapper.changeHistoryFetchResult(fetchRequest, error: nil)
         guard let enumerator = result.value as? NSEnumerator else {
             throw ContactError.failedToEnumerateChangeHistory
         }
-        self.currentHistoryToken = result.currentHistoryToken
+        currentHistoryToken = result.currentHistoryToken
+        continuation?.yield(currentHistoryToken)
         let changeEvents = enumerator.compactMap { $0 as? CNChangeHistoryEvent }
         guard let visitor = eventVisitor else {
             throw ContactError.noEventVisitorAssigned
