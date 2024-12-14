@@ -8,7 +8,7 @@
 @preconcurrency import Contacts
 
 //MARK: Functional Extensions
-extension CNContact {
+public extension CNContact {
     
     /// Returns a set of ``ComposableContactKey`` values that correspond to keys the `CNContact` instance
     /// has actually been fetched with. In other words, it checks against the underlying contact store
@@ -18,7 +18,7 @@ extension CNContact {
     /// confirms that these keys were made available from the contact store. This is useful when you
     /// need to know what data fields were included in the original fetch request and are thus safe
     /// to access without causing a refetch or error.
-    public func getFetchedKeys() -> Set<ComposableContactKey> {
+    func getFetchedKeys() -> Set<ComposableContactKey> {
         var availableKeys = Set<ComposableContactKey>()
         for key in ComposableContactKey.allCases {
             let cnKey = key.keyDescriptor as! String
@@ -37,7 +37,7 @@ extension CNContact {
     /// Use this method when you need to know which properties of the contact are actually populated
     /// with meaningful information, regardless of whether they were fetched initially. This helps
     /// determine which user-visible data fields can be displayed or further processed.
-    public func getSetKeys() -> Set<ComposableContactKey> {
+    func getSetKeys() -> Set<ComposableContactKey> {
         var availableKeys = Set<ComposableContactKey>()
         for key in ComposableContactKey.allCases {
             switch key {
@@ -167,7 +167,7 @@ extension CNContact {
 }
 
 //MARK: Mock Data
-extension CNContact {
+public extension CNContact {
     static let johnDoe: CNContact = {
 
         let contact = CNMutableContact()
