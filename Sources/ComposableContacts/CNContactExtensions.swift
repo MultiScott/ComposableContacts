@@ -18,7 +18,7 @@ extension CNContact {
     /// confirms that these keys were made available from the contact store. This is useful when you
     /// need to know what data fields were included in the original fetch request and are thus safe
     /// to access without causing a refetch or error.
-    func getFetchedKeys() -> Set<ComposableContactKey> {
+    public func getFetchedKeys() -> Set<ComposableContactKey> {
         var availableKeys = Set<ComposableContactKey>()
         for key in ComposableContactKey.allCases {
             let cnKey = key.keyDescriptor as! String
@@ -37,7 +37,7 @@ extension CNContact {
     /// Use this method when you need to know which properties of the contact are actually populated
     /// with meaningful information, regardless of whether they were fetched initially. This helps
     /// determine which user-visible data fields can be displayed or further processed.
-    func getSetKeys() -> Set<ComposableContactKey> {
+    public func getSetKeys() -> Set<ComposableContactKey> {
         var availableKeys = Set<ComposableContactKey>()
         for key in ComposableContactKey.allCases {
             switch key {
