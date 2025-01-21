@@ -7,6 +7,8 @@
 
 import Foundation
 @preconcurrency import Contacts
+import CoreTransferable
+
 
 /// An enum representing all possible keys for accessing fields in a [CNContact](https://developer.apple.com/documentation/contacts/cncontact). They map to  the corresponding [CNKeyDescriptor](https://developer.apple.com/documentation/contacts/cnkeydescriptor) via the `keyDescriptor` variable.
 public enum ComposableContactKey: CaseIterable, Codable, Sendable, Equatable, Hashable {
@@ -40,11 +42,20 @@ public enum ComposableContactKey: CaseIterable, Codable, Sendable, Equatable, Ha
     case socialProfiles
     case instantMessageAddresses
     case dates
+    
+    ///This is a convience method returns all of the keys with the exception of the note key.
+    ///
+    ///Per Apple [documentation](https://developer.apple.com/documentation/bundleresources/entitlements/com.apple.developer.contacts.notes?language=objc), Access to notes requires `com.apple.developer.contacts.notes` entitlement, which must be requested in the developer portal. Request permission at this [link](https://developer.apple.com/contact/request/contact-note-field).
+    public static let allExceptNotes: Set<ComposableContactKey> = {
+        var allCases = Set(ComposableContactKey.allCases)
+        allCases.remove(.note)
+        return allCases
+    }()
 
     /// Maps the enum case to its corresponding `CNKeyDescriptor` value.
     /// This property integrates with the `Contacts` framework,
     /// allowing for safe and readable key usage when accessing or requesting contact fields.
-    var keyDescriptor: CNKeyDescriptor {
+    public var keyDescriptor: CNKeyDescriptor {
         switch self {
         case .identifier:
             return CNContactIdentifierKey as CNKeyDescriptor

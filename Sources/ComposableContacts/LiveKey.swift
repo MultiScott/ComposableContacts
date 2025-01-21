@@ -114,6 +114,7 @@ public final actor ContactActor {
         currentHistoryToken = config.historyToken
         eventVisitor = config.eventVisitor
         observeNotifications()
+        try fetchChanges()
         return try getTokenStream()
     }
     
@@ -289,6 +290,7 @@ public final actor ContactActor {
         guard let mutableContact = contact.mutableCopy() as? CNMutableContact else {
             throw ContactError.failedToCreateMutableCopy
         }
+        let keys = mutableContact.getFetchedKeys()
         let saveRequest = CNSaveRequest()
         saveRequest.update(mutableContact)
         try contactStore.execute(saveRequest)

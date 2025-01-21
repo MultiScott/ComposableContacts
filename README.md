@@ -4,7 +4,7 @@ A `DependencyClient` that provides an interface to Apple's [Contacts](https://de
 
 ## Motivation
 
-Interaction with [Contacts](https://developer.apple.com/documentation/contacts) using modern swift 6 and TCA
+Interaction with [Contacts](https://developer.apple.com/documentation/contacts) using modern swift 6. Contacts is unforgiving (runtime crash if you dont specifically check every field on the item)
 
 ## Installation
 

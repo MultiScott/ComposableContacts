@@ -152,6 +152,8 @@ public struct ContactsClient: Sendable {
 // MARK: DataTypes
 /// An enumeration of errors that may arise when interacting with the `ContactClient`.
 public enum ContactError: Error {
+    // Indicates a failed attempt to create a `CNContact` from a `CNMutableContact`.
+    case failedToCreateCNContact
     /// Indicates a failed attempt to create a mutable copy of a `CNContact`.
     case failedToCreateMutableCopy
     /// Indicates a failure to enumerate change history from the contact store.
