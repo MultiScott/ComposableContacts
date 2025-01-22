@@ -95,7 +95,7 @@ public final actor ContactActor {
     /// - Returns: The updated `CNAuthorizationStatus` after requesting access.
     /// - Throws: `ContactError.NSContactsUsageDescriptionNotSet` if the `NSContactsUsageDescription` key is missing in the Info.plist.
     fileprivate func requestAccess() async throws -> CNAuthorizationStatus {
-        try guardContactUsageDescription()
+//        try guardContactUsageDescription()
         let currentStatus = CNContactStore.authorizationStatus(for: .contacts)
         guard currentStatus == .notDetermined else {
             return currentStatus
